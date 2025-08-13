@@ -2,75 +2,105 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 
 export default function Home() {
-  const [login, setLogin] = useState('');
-  const [password, setPassword] = useState('');
-  const [loggedIn, setLoggedIn] = useState(false);
-  const [results, setResults] = useState([]);
+  const [cars, setCars] = useState([]);
+  const [tracks, setTracks] = useState([
+    'Buenos Aires - La Boca',
+    'Buenos Aires - Water Run',
+    'Himalayas - Leap of Faith',
+    'Himalayas - Freefall',
+    'Greenland - Out of the Center',
+    'Greenland - Ice Breakers',
+    'Cairo - A Kings Revival',
+    'Cairo - Gezira Island',
+    'The Caribbean - Hell Vale',
+    'The Caribbean - Island Tour',
+    'The Caribbean - Resort Dash',
+    'Nevada - Bridge To Bridge',
+    'Nevada - Sprint Finish',
+    'Norway - Beyond Boundaries',
+    'Norway - Future Hymn',
+    'New York - Wall Street Ride',
+    'Auckland - Sprint Finish',
+    'Auckland - Straight Sprint',
+    'Osaka - Meiji Rush',
+    'Osaka - Namba Park',
+    'Paris - Along the Seine',
+    'Paris - Notre Dame',
+    'Rome - Roman Tumble',
+    'Rome - Roman Byroads',
+    'San Francisco - Railroad Bustle',
+    'San Francisco - The Tunnel',
+    'Singapore - Wave Rider',
+    'Singapore - Urban Rush',
+    'US Midwest - Whirlwind Curve',
+    'US Midwest - Trainspotter',
+    'Tuscany - Vineyard Townscape',
+    'Tuscany - Riverine Launch',
+    'Shanghai - Paris of the East',
+    'Shanghai - Double Roundabout',
+    'Scotland - Rocky Valley',
+    'Scotland - Ghost Ships',
+  ]);
+
   const [newCar, setNewCar] = useState('');
-  const [newTrack, setNewTrack] = useState('');
-  const [newTime, setNewTime] = useState('');
+  const [times, setTimes] = useState({});
 
-  const handleLogin = () => {
-    if (login === process.env.NEXT_PUBLIC_LOGIN && password === process.env.NEXT_PUBLIC_PASSWORD) {
-      setLoggedIn(true);
-      fetchResults();
-    } else {
-      alert('Неверный логин или пароль');
-    }
-  };
+  useEffect(() => {
+    fetchCars();
+  }, []);
 
-  const fetchResults = async () => {
-    const { data } = await supabase.from('race_results').select('*');
-    setResults(data);
-  };
+  async function fetchCars() {
+    let { data } = await supabase.from('Gauntlet').select('car').order('car');
+    setCars(data?.map(d => d.car) || []);
+  }
 
-  const addResult = async () => {
-    if (!newCar || !newTrack || !newTime) return alert("Заполните все поля");
-    await supabase.from('race_results').insert([{ track: newTrack, car: newCar, time: newTime }]);
-    fetchResults();
+  async function addCar() {
+    if (!newCar) return;
+    await supabase.from('Gauntlet').insert([{ car: newCar }]);
+    setCars([...cars, newCar]);
     setNewCar('');
-    setNewTrack('');
-    setNewTime('');
-  };
+  }
 
-  if (!loggedIn) {
-    return (
-      <div style={{padding:20}}>
-        <h1>Login</h1>
-        <input placeholder="Login" value={login} onChange={e => setLogin(e.target.value)} />
-        <input placeholder="Password" type="password" value={password} onChange={e => setPassword(e.target.value)} />
-        <button onClick={handleLogin}>Enter</button>
-      </div>
-    );
+  async function saveTime(car, track, value) {
+    await supabase.from('Gauntlet').upsert({ car, track, time: value });
+    setTimes({ ...times, [`${car}-${track}`]: value });
   }
 
   return (
-    <div style={{padding:20}}>
-      <h1>Race Results</h1>
-      <table border="1" cellPadding="5">
+    <div style={{ padding: '20px' }}>
+      <h1>Gauntlet</h1>
+      <div>
+        <input
+          placeholder="Новая машина"
+          value={newCar}
+          onChange={(e) => setNewCar(e.target.value)}
+        />
+        <button onClick={addCar}>Добавить машину</button>
+      </div>
+      <table border="1" cellPadding="5" style={{ marginTop: '20px' }}>
         <thead>
           <tr>
-            <th>Track</th>
-            <th>Car</th>
-            <th>Time</th>
+            <th>Машины / Трассы</th>
+            {tracks.map(track => <th key={track}>{track}</th>)}
           </tr>
         </thead>
         <tbody>
-          {results.map(r => (
-            <tr key={r.id}>
-              <td>{r.track}</td>
-              <td>{r.car}</td>
-              <td>{r.time}</td>
+          {cars.map(car => (
+            <tr key={car}>
+              <td>{car}</td>
+              {tracks.map(track => (
+                <td key={track}>
+                  <input
+                    style={{ width: '60px' }}
+                    value={times[`${car}-${track}`] || ''}
+                    onChange={e => saveTime(car, track, e.target.value)}
+                  />
+                </td>
+              ))}
             </tr>
           ))}
         </tbody>
       </table>
-
-      <h2>Add Result</h2>
-      <input placeholder="Track" value={newTrack} onChange={e => setNewTrack(e.target.value)} />
-      <input placeholder="Car" value={newCar} onChange={e => setNewCar(e.target.value)} />
-      <input placeholder="Time" value={newTime} onChange={e => setNewTime(e.target.value)} />
-      <button onClick={addResult}>Add</button>
     </div>
   );
 }
